@@ -12,7 +12,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     
@@ -547,6 +554,147 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+
+        /* Markdown Styling */
+        .ai-message-content {
+            line-height: 1.6;
+        }
+
+        .ai-message-content h1,
+        .ai-message-content h2,
+        .ai-message-content h3,
+        .ai-message-content h4,
+        .ai-message-content h5,
+        .ai-message-content h6 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .ai-message-content h1 { font-size: 1.5rem; }
+        .ai-message-content h2 { font-size: 1.3rem; }
+        .ai-message-content h3 { font-size: 1.1rem; }
+
+        .ai-message-content p {
+            margin-bottom: 0.75rem;
+        }
+
+        .ai-message-content ul,
+        .ai-message-content ol {
+            margin-bottom: 0.75rem;
+            padding-left: 1.5rem;
+        }
+
+        .ai-message-content li {
+            margin-bottom: 0.25rem;
+        }
+
+        .ai-message-content code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.9em;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .ai-message-content pre {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.75rem 0;
+            overflow-x: auto;
+        }
+
+        .ai-message-content pre code {
+            background-color: transparent;
+            padding: 0;
+            color: #d4d4d4;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .ai-message-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding-left: 1rem;
+            margin: 0.75rem 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .ai-message-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.75rem 0;
+            font-size: 0.9em;
+        }
+
+        .ai-message-content table th,
+        .ai-message-content table td {
+            border: 1px solid var(--sidebar-border);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .ai-message-content table th {
+            background-color: var(--sidebar-bg);
+            font-weight: 600;
+        }
+
+        .ai-message-content table tr:nth-child(even) {
+            background-color: var(--sidebar-bg);
+        }
+
+        .ai-message-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .ai-message-content a:hover {
+            text-decoration: underline;
+        }
+
+        .ai-message-content hr {
+            border: none;
+            border-top: 1px solid var(--sidebar-border);
+            margin: 1rem 0;
+        }
+
+        .ai-message-content strong {
+            font-weight: 600;
+        }
+
+        .ai-message-content em {
+            font-style: italic;
+        }
+
+        /* Copy button for code blocks */
+        .code-block-wrapper {
+            position: relative;
+        }
+
+        .code-block-wrapper .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .code-block-wrapper:hover .copy-button {
+            opacity: 1;
+        }
+
+        .code-block-wrapper .copy-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 <body class="vh-100">
@@ -1003,7 +1151,7 @@
                     <div class="message" id="${messageId}">
                         <div class="d-flex justify-content-start mb-2">
                             <div class="message-content bot-message">
-                                <span class="streaming-content"></span>
+                                <div class="ai-message-content streaming-content"></div>
                                 <span class="cursor-blink">▋</span>
                             </div>
                         </div>
@@ -1014,11 +1162,69 @@
                 return messageId;
             }
 
+            // Configure marked.js for markdown rendering
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true,
+                    highlight: function(code, lang) {
+                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(code, { language: lang }).value;
+                            } catch (err) {}
+                        }
+                        return code;
+                    }
+                });
+            }
+
+            // Function to render markdown with code block wrapper
+            function renderMarkdown(text) {
+                if (typeof marked === 'undefined') {
+                    return escapeHtml(text);
+                }
+
+                let html = marked.parse(text);
+
+                // Wrap code blocks with copy button
+                html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g, function(match, lang, code) {
+                    return `<div class="code-block-wrapper">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre><code class="language-${lang}">${code}</code></pre>
+                    </div>`;
+                });
+
+                html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, function(match, code) {
+                    return `<div class="code-block-wrapper">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre><code>${code}</code></pre>
+                    </div>`;
+                });
+
+                return html;
+            }
+
+            // Function to copy code from code blocks
+            function copyCode(button) {
+                const codeBlock = button.nextElementSibling.querySelector('code');
+                const text = codeBlock.textContent;
+
+                navigator.clipboard.writeText(text).then(function() {
+                    button.textContent = 'Copied!';
+                    setTimeout(function() {
+                        button.textContent = 'Copy';
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Failed to copy:', err);
+                });
+            }
+
             // Function to stream chat response using fetch
             function streamChatResponse(message, chatId) {
                 const messageId = createAssistantMessage();
                 const contentElement = document.querySelector(`#${messageId} .streaming-content`);
                 const cursorElement = document.querySelector(`#${messageId} .cursor-blink`);
+                let accumulatedContent = '';
 
                 // Get CSRF token
                 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -1043,6 +1249,14 @@
                     function readStream() {
                         reader.read().then(({done, value}) => {
                             if (done) {
+                                // Final render with markdown
+                                contentElement.innerHTML = renderMarkdown(accumulatedContent);
+                                // Apply syntax highlighting
+                                if (typeof hljs !== 'undefined') {
+                                    contentElement.querySelectorAll('pre code').forEach((block) => {
+                                        hljs.highlightElement(block);
+                                    });
+                                }
                                 // Remove cursor when done
                                 if (cursorElement) {
                                     cursorElement.remove();
@@ -1062,8 +1276,16 @@
                                         const data = JSON.parse(line.substring(6));
 
                                         if (data.type === 'content') {
-                                            // Append content to message
-                                            contentElement.textContent += data.content;
+                                            // Accumulate content
+                                            accumulatedContent += data.content;
+                                            // Render markdown in real-time
+                                            contentElement.innerHTML = renderMarkdown(accumulatedContent);
+                                            // Apply syntax highlighting
+                                            if (typeof hljs !== 'undefined') {
+                                                contentElement.querySelectorAll('pre code').forEach((block) => {
+                                                    hljs.highlightElement(block);
+                                                });
+                                            }
                                             scrollToBottom();
                                         } else if (data.type === 'assistant_end') {
                                             // Update chat_id if this was a new chat
@@ -1071,6 +1293,14 @@
                                                 document.getElementById('chatIdInput').value = data.chat_id;
                                             }
                                         } else if (data.type === 'stream_end') {
+                                            // Final render with markdown
+                                            contentElement.innerHTML = renderMarkdown(accumulatedContent);
+                                            // Apply syntax highlighting
+                                            if (typeof hljs !== 'undefined') {
+                                                contentElement.querySelectorAll('pre code').forEach((block) => {
+                                                    hljs.highlightElement(block);
+                                                });
+                                            }
                                             // Stream completed
                                             if (cursorElement) {
                                                 cursorElement.remove();
