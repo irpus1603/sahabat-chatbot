@@ -1,0 +1,542 @@
+{% extends 'app/index.html' %}
+
+{% block title %}Document Upload - RAG System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="card bg-secondary border-0 mb-4">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">Document Management</h3>
+                    
+                    <!-- Document Upload Form -->
+                    <div class="mb-4">
+                        <h5>Upload Documents</h5>
+                        <form method="post" enctype="multipart/form-data" id="uploadForm">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="documents" class="form-label">Select Documents</label>
+                                <input type="file" class="form-control" id="documents" name="documents" multiple 
+                                       accept=".pdf,.txt,.docx,.xlsx,.md">
+                                <div class="form-text">
+                                    Supported formats: PDF, TXT, DOCX, XLSX, MD 
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <span class="spinner-border spinner-border-sm d-none" id="uploadSpinner"></span>
+                                Upload & Process
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Folder Scanning and Processing -->
+                    <div class="mb-4">
+                        <h5>Document Folder Management</h5>
+                        <p class="text-muted">Configured folder: <code>{{ document_folder }}</code></p>
+                        
+                        <!-- Folder Statistics -->
+                        <div class="row mb-3" id="folderStats">
+                            <div class="col-md-3">
+                                <div class="card bg-primary border-primary text-white">
+                                    <div class="card-body text-center p-2">
+                                        <small class="text-white-50">Total Files</small>
+                                        <h6 class="mb-0 text-white" id="totalFiles">{{ folder_stats.total_files|default:"0" }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success border-success text-white">
+                                    <div class="card-body text-center p-2">
+                                        <small class="text-white-50">Supported</small>
+                                        <h6 class="mb-0 text-white" id="supportedFiles">{{ folder_stats.supported_files|default:"0" }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning border-warning text-dark">
+                                    <div class="card-body text-center p-2">
+                                        <small class="text-dark-50">Unprocessed</small>
+                                        <h6 class="mb-0 text-dark" id="unprocessedFiles">{{ folder_stats.unprocessed_files|length|default:"0" }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-info border-info text-white">
+                                    <div class="card-body text-center p-2">
+                                        <small class="text-white-50">Folders</small>
+                                        <h6 class="mb-0 text-white" id="totalFolders">{{ folder_stats.folder_structure|length|default:"0" }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshFolderScan()">
+                                <span class="spinner-border spinner-border-sm d-none" id="refreshSpinner"></span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 4v6h-6"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                                Refresh Scan
+                            </button>
+                            
+                            <button class="btn btn-outline-primary btn-sm" onclick="processFolder()">
+                                <span class="spinner-border spinner-border-sm d-none" id="processSpinner"></span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14,2 14,8 20,8"/>
+                                </svg>
+                                Process Current Folder
+                            </button>
+                            
+                            <button class="btn btn-warning btn-sm" onclick="processAllUnprocessed()" {% if folder_stats.unprocessed_files|length == 0 %}disabled{% endif %}>
+                                <span class="spinner-border spinner-border-sm d-none" id="processAllSpinner"></span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22,4 12,14.01 9,11.01"/>
+                                </svg>
+                                Process All Unprocessed ({{ folder_stats.unprocessed_files|length }})
+                            </button>
+                        </div>
+                        
+                        <!-- Unprocessed Files List -->
+                        {% if folder_stats.unprocessed_files %}
+                        <div class="mt-3">
+                            <button class="btn btn-outline-info btn-sm" data-bs-toggle="collapse" data-bs-target="#unprocessedList">
+                                Show Unprocessed Files ({{ folder_stats.unprocessed_files|length }})
+                            </button>
+                            <div class="collapse mt-2" id="unprocessedList">
+                                <div class="card bg-light border-warning">
+                                    <div class="card-body p-2">
+                                        <div class="row">
+                                            {% for file in folder_stats.unprocessed_files %}
+                                            <div class="col-md-6 mb-1">
+                                                <small class="text-dark">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                        <polyline points="14,2 14,8 20,8"/>
+                                                    </svg>
+                                                    {{ file.path }} 
+                                                    <span class="badge bg-warning text-dark">{{ file.extension }}</span>
+                                                    <span class="text-secondary">({{ file.size|filesizeformat }})</span>
+                                                </small>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Folder Structure -->
+                        {% if folder_stats.folder_structure %}
+                        <div class="mt-3">
+                            <button class="btn btn-outline-info btn-sm" data-bs-toggle="collapse" data-bs-target="#folderStructure">
+                                Show Folder Structure
+                            </button>
+                            <div class="collapse mt-2" id="folderStructure">
+                                <div class="card bg-light border-info">
+                                    <div class="card-body p-2">
+                                        {% for folder in folder_stats.folder_structure %}
+                                        <small class="d-block text-dark">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                            </svg>
+                                            {{ folder }}
+                                        </small>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Processing Status -->
+                    <div id="processingStatus" class="mb-4 d-none">
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                <span id="statusText">Processing documents...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Document List -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>Document Library</h5>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshDocuments()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 4v6h-6"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                                Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Chunks</th>
+                                        <th>Size</th>
+                                        <th>Type</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="documentsTableBody">
+                                    {% for doc in documents %}
+                                    <tr>
+                                        <td>{{ doc.title }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if doc.embedding_status == 'completed' %}success{% elif doc.embedding_status == 'processing' %}warning{% elif doc.embedding_status == 'failed' %}danger{% else %}secondary{% endif %}">
+                                                {{ doc.embedding_status|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ doc.chunk_count }}</td>
+                                        <td>{{ doc.metadata.file_size|filesizeformat }}</td>
+                                        <td>{{ doc.metadata.file_type|upper }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if doc.embedding_status == 'failed' or doc.embedding_status == 'pending' %}
+                                                <button class="btn btn-outline-primary" onclick="reprocessDocument({{ doc.id }})">
+                                                    Reprocess
+                                                </button>
+                                                {% endif %}
+                                                <button class="btn btn-outline-danger" onclick="deleteDocument({{ doc.id }})">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            No documents uploaded yet
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-primary border-primary text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title text-white">Total Documents</h6>
+                                    <h4 class="text-white">{{ stats.total_documents }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success border-success text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title text-white">Total Chunks</h6>
+                                    <h4 class="text-white">{{ stats.total_chunks }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-info border-info text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title text-white">Embeddings Ready</h6>
+                                    <h4 class="text-white">{{ stats.completed_embeddings }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Document upload form handler
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const uploadBtn = this.querySelector('button[type="submit"]');
+    const spinner = document.getElementById('uploadSpinner');
+    
+    // Show loading state
+    uploadBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    showProcessingStatus('Uploading documents...');
+    
+    fetch('{% url "document_upload" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showProcessingStatus(`Successfully uploaded ${data.uploaded_count} documents`);
+            refreshDocuments();
+            this.reset();
+        } else {
+            alert('Error uploading documents: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error uploading documents');
+    })
+    .finally(() => {
+        uploadBtn.disabled = false;
+        spinner.classList.add('d-none');
+        hideProcessingStatus();
+    });
+});
+
+// Process folder function
+function processFolder() {
+    const processBtn = event.target;
+    const spinner = document.getElementById('processSpinner');
+    
+    processBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    showProcessingStatus('Processing documents in folder...');
+    
+    fetch('{% url "process_folder" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showProcessingStatus(`Successfully processed ${data.processed_count} documents`);
+            refreshDocuments();
+        } else {
+            alert('Error processing folder: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error processing folder');
+    })
+    .finally(() => {
+        processBtn.disabled = false;
+        spinner.classList.add('d-none');
+        hideProcessingStatus();
+    });
+}
+
+// Process all unprocessed documents
+function processAllUnprocessed() {
+    const processBtn = event.target;
+    const spinner = document.getElementById('processAllSpinner');
+    
+    if (!confirm('Process all unprocessed documents? This may take a while.')) {
+        return;
+    }
+    
+    processBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    showProcessingStatus('Processing all unprocessed documents...');
+    
+    fetch('{% url "process_all_unprocessed" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showProcessingStatus(`Processed ${data.processed_count} documents successfully. ${data.failed_count} failed.`);
+            refreshFolderScan();
+        } else {
+            alert('Error processing documents: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error processing documents');
+    })
+    .finally(() => {
+        processBtn.disabled = false;
+        spinner.classList.add('d-none');
+        hideProcessingStatus();
+    });
+}
+
+// Refresh folder scan
+function refreshFolderScan() {
+    const refreshBtn = event.target;
+    const spinner = document.getElementById('refreshSpinner');
+    
+    refreshBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    
+    fetch('{% url "refresh_folder_scan" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateFolderStats(data.folder_stats);
+            
+            // Show success message
+            const notification = document.createElement('div');
+            notification.className = 'alert alert-success alert-dismissible';
+            notification.innerHTML = `
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                Folder scan refreshed successfully
+            `;
+            document.querySelector('.card-body').prepend(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        } else {
+            alert('Error refreshing folder scan: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error refreshing folder scan');
+    })
+    .finally(() => {
+        refreshBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+}
+
+// Update folder statistics display
+function updateFolderStats(folderStats) {
+    console.log('Updating folder stats:', folderStats);
+    document.getElementById('totalFiles').textContent = folderStats.total_files || 0;
+    document.getElementById('supportedFiles').textContent = folderStats.supported_files || 0;
+    document.getElementById('unprocessedFiles').textContent = (folderStats.unprocessed_files ? folderStats.unprocessed_files.length : 0);
+    document.getElementById('totalFolders').textContent = (folderStats.folder_structure ? folderStats.folder_structure.length : 0);
+    
+    // Update process all button
+    const processAllBtn = document.querySelector('[onclick="processAllUnprocessed()"]');
+    if (folderStats.unprocessed_files.length === 0) {
+        processAllBtn.disabled = true;
+        processAllBtn.innerHTML = processAllBtn.innerHTML.replace(/\(\d+\)/, '(0)');
+    } else {
+        processAllBtn.disabled = false;
+        processAllBtn.innerHTML = processAllBtn.innerHTML.replace(/\(\d+\)/, `(${folderStats.unprocessed_files.length})`);
+    }
+}
+
+// Reprocess document function
+function reprocessDocument(docId) {
+    if (!confirm('Reprocess this document?')) return;
+    
+    fetch(`{% url "reprocess_document" 0 %}`.replace('0', docId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            refreshDocuments();
+        } else {
+            alert('Error reprocessing document: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error reprocessing document');
+    });
+}
+
+// Delete document function
+function deleteDocument(docId) {
+    if (!confirm('Are you sure you want to delete this document? This will also remove all associated embeddings.')) return;
+    
+    fetch(`{% url "delete_document" 0 %}`.replace('0', docId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            refreshDocuments();
+        } else {
+            alert('Error deleting document: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting document');
+    });
+}
+
+// Refresh documents function
+function refreshDocuments() {
+    location.reload();
+}
+
+// Show processing status
+function showProcessingStatus(message) {
+    const statusDiv = document.getElementById('processingStatus');
+    const statusText = document.getElementById('statusText');
+    
+    statusText.textContent = message;
+    statusDiv.classList.remove('d-none');
+}
+
+// Hide processing status
+function hideProcessingStatus() {
+    setTimeout(() => {
+        document.getElementById('processingStatus').classList.add('d-none');
+    }, 3000);
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Debug: Check initial values when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, checking initial folder stats:');
+    console.log('Total Files:', document.getElementById('totalFiles').textContent);
+    console.log('Supported Files:', document.getElementById('supportedFiles').textContent);
+    console.log('Unprocessed Files:', document.getElementById('unprocessedFiles').textContent);
+    console.log('Total Folders:', document.getElementById('totalFolders').textContent);
+});
+</script>
+{% endblock %}

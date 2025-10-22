@@ -1,0 +1,160 @@
+{% extends 'app/index.html' %}
+
+{% block title %}Document Search - RAG System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="card bg-secondary border-0 mb-4">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">Document Search</h3>
+                    
+                    <!-- Search Form -->
+                    <div class="mb-4">
+                        <form method="post" id="searchForm">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="query" id="searchQuery" 
+                                       placeholder="Search documents..." required>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="spinner-border spinner-border-sm d-none" id="searchSpinner"></span>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"/>
+                                        <path d="m21 21-4.35-4.35"/>
+                                    </svg>
+                                    Search
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Search Results -->
+                    <div id="searchResults">
+                        {% if results %}
+                        <h5>Search Results for "{{ query }}"</h5>
+                        <div class="row">
+                            {% for result in results %}
+                            <div class="col-12 mb-3">
+                                <div class="card bg-dark border-secondary">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title">{{ result.title }}</h6>
+                                            <span class="badge bg-primary">{{ result.relevance_score|floatformat:2 }}</span>
+                                        </div>
+                                        <p class="card-text">{{ result.content }}</p>
+                                        <small class="text-muted">
+                                            Source: {{ result.source|truncatechars:50 }}
+                                            {% if result.chunk_index is not None %}
+                                            | Chunk {{ result.chunk_index }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% elif query %}
+                        <div class="alert alert-info">
+                            No results found for "{{ query }}"
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-dark border-secondary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">RAG Chat</h6>
+                                    <p class="card-text small">Chat with AI using document context</p>
+                                    <button class="btn btn-outline-primary" onclick="startRagChat()">
+                                        Start RAG Chat
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark border-secondary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Manage Documents</h6>
+                                    <p class="card-text small">Upload and manage documents</p>
+                                    <a href="{% url 'document_upload' %}" class="btn btn-outline-secondary">
+                                        Manage Documents
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Search form handler
+document.getElementById('searchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const searchBtn = this.querySelector('button[type="submit"]');
+    const spinner = document.getElementById('searchSpinner');
+    
+    // Show loading state
+    searchBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    
+    fetch('{% url "document_search" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Replace the current page content with the search results
+        document.documentElement.innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error searching documents');
+    })
+    .finally(() => {
+        searchBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+});
+
+// Start RAG chat function
+function startRagChat() {
+    const query = document.getElementById('searchQuery').value;
+    const url = new URL('{% url "home" %}', window.location.origin);
+    
+    // Add RAG mode parameter
+    url.searchParams.set('rag_mode', 'true');
+    if (query) {
+        url.searchParams.set('query', query);
+    }
+    
+    window.location.href = url.toString();
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

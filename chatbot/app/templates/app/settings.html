@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - ChatBot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --chatgpt-dark-bg: #212529;
+            --chatgpt-sidebar: #171717;
+            --chatgpt-message-user: #10a37f;
+            --chatgpt-input-bg: #40414f;
+            --chatgpt-border: #4d5069;
+            --chatgpt-text: #ececf1;
+            --chatgpt-text-muted: #8e8ea0;
+        }
+        
+        body {
+            background-color: var(--chatgpt-dark-bg);
+            color: var(--chatgpt-text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .settings-section {
+            background-color: var(--chatgpt-input-bg);
+            border: 1px solid var(--chatgpt-border);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .form-control, .form-select {
+            background-color: var(--chatgpt-dark-bg);
+            border: 1px solid var(--chatgpt-border);
+            color: var(--chatgpt-text);
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background-color: var(--chatgpt-dark-bg);
+            border-color: var(--chatgpt-message-user);
+            color: var(--chatgpt-text);
+            box-shadow: 0 0 0 0.2rem rgba(16, 163, 127, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: var(--chatgpt-message-user);
+            border-color: var(--chatgpt-message-user);
+        }
+        
+        .btn-primary:hover {
+            background-color: #0d8f68;
+            border-color: #0d8f68;
+        }
+        
+        .form-check-input {
+            background-color: var(--chatgpt-dark-bg);
+            border-color: var(--chatgpt-border);
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--chatgpt-message-user);
+            border-color: var(--chatgpt-message-user);
+        }
+        
+        .form-check-input:focus {
+            box-shadow: 0 0 0 0.2rem rgba(16, 163, 127, 0.25);
+        }
+        
+        .alert-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-color: rgba(255, 193, 7, 0.2);
+            color: #ffcd39;
+        }
+        
+        .alert-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            border-color: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">Settings</h1>
+            <a href="{% url 'home' %}" class="btn btn-outline-light">← Back to Chat</a>
+        </div>
+        
+        <!-- General Settings -->
+        <div class="settings-section">
+            <h3 class="h4 mb-3">General Settings</h3>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Theme</label>
+                        <select class="form-select">
+                            <option value="dark" selected>Dark</option>
+                            <option value="light">Light</option>
+                            <option value="auto">Auto</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Language</label>
+                        <select class="form-select">
+                            <option value="en" selected>English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Default Model</label>
+                        <select class="form-select">
+                            <option value="gpt-3.5-turbo" selected>GPT-3.5 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="claude-3">Claude 3</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Message History</label>
+                        <select class="form-select">
+                            <option value="7" selected>7 days</option>
+                            <option value="30">30 days</option>
+                            <option value="90">90 days</option>
+                            <option value="-1">Forever</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Settings -->
+        <div class="settings-section">
+            <h3 class="h4 mb-3">Chat Settings</h3>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="enableNotifications" checked>
+                <label class="form-check-label" for="enableNotifications">
+                    Enable notifications
+                </label>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="enableSounds" checked>
+                <label class="form-check-label" for="enableSounds">
+                    Enable sound effects
+                </label>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="autoSave" checked>
+                <label class="form-check-label" for="autoSave">
+                    Auto-save conversations
+                </label>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="showTyping" checked>
+                <label class="form-check-label" for="showTyping">
+                    Show typing indicator
+                </label>
+            </div>
+        </div>
+        
+        <!-- Privacy Settings -->
+        <div class="settings-section">
+            <h3 class="h4 mb-3">Privacy & Security</h3>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="shareAnalytics">
+                <label class="form-check-label" for="shareAnalytics">
+                    Share usage analytics
+                </label>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="improveModel">
+                <label class="form-check-label" for="improveModel">
+                    Use my conversations to improve the model
+                </label>
+            </div>
+            
+            <div class="mb-3">
+                <button class="btn btn-outline-warning">Export My Data</button>
+                <small class="form-text text-muted d-block mt-1">
+                    Download all your conversations and data
+                </small>
+            </div>
+        </div>
+        
+        <!-- Account Settings -->
+        <div class="settings-section">
+            <h3 class="h4 mb-3">Account</h3>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ user.email }}" placeholder="Enter your email">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <button class="btn btn-outline-primary">Change Password</button>
+            </div>
+        </div>
+        
+        <!-- Danger Zone -->
+        <div class="settings-section">
+            <h3 class="h4 mb-3 text-danger">Danger Zone</h3>
+            
+            <div class="alert alert-warning">
+                <strong>Warning:</strong> These actions cannot be undone.
+            </div>
+            
+            <div class="mb-3">
+                <button class="btn btn-outline-warning me-2">Clear All Chat History</button>
+                <small class="form-text text-muted">
+                    This will permanently delete all your conversations
+                </small>
+            </div>
+            
+            <div class="mb-3">
+                <button class="btn btn-outline-danger">Delete Account</button>
+                <small class="form-text text-muted">
+                    This will permanently delete your account and all associated data
+                </small>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-end">
+            <button class="btn btn-primary">Save Settings</button>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Clear all chat history functionality
+        function clearAllChatHistory() {
+            if (confirm('Are you sure you want to clear all chat history? This action cannot be undone and will permanently delete all your conversations.')) {
+                const clearBtn = document.querySelector('.btn-outline-warning');
+                const originalText = clearBtn.textContent;
+                
+                // Show loading state
+                clearBtn.disabled = true;
+                clearBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Clearing...';
+                
+                fetch('/clear-all-history/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <strong>Success!</strong> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.querySelector('.settings-section').insertBefore(alertDiv, document.querySelector('.settings-section').firstChild);
+                        
+                        // Scroll to top to show the alert
+                        window.scrollTo(0, 0);
+                    } else {
+                        throw new Error(data.error || 'Failed to clear chat history');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing chat history:', error);
+                    
+                    // Show error message
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        <strong>Error!</strong> ${error.message || 'Failed to clear chat history. Please try again.'}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.settings-section').insertBefore(alertDiv, document.querySelector('.settings-section').firstChild);
+                    
+                    // Scroll to top to show the alert
+                    window.scrollTo(0, 0);
+                })
+                .finally(() => {
+                    // Restore button state
+                    clearBtn.disabled = false;
+                    clearBtn.textContent = originalText;
+                });
+            }
+        }
+
+        // Attach event listener to clear all chat history button
+        document.addEventListener('DOMContentLoaded', function() {
+            const clearAllBtn = document.querySelector('.btn-outline-warning');
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', clearAllChatHistory);
+            }
+        });
+    </script>
+</body>
+</html>
