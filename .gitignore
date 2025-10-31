@@ -44,7 +44,7 @@ env/
 *.thumbs.db
 
 # Environment & Configuration
-.env
+env
 .env.*
 !.env.example
 *.conf
