@@ -326,7 +326,7 @@ class APIClient:
                 timeout=self.timeout
             )
 
-            logger.info(f"Request payload messages: {json.dumps(payload['messages'], indent=2)}")
+            logger.info(f"Request payload prompt: {payload['prompt'][:200]}...")
             logger.info(f"Response status: {response.status_code}")
             response.raise_for_status()
             result = response.json()
