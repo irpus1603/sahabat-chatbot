@@ -1,0 +1,32 @@
+<div class="col-md-3">
+    <div class="card bg-primary border-primary text-white">
+        <div class="card-body text-center p-2">
+            <small class="text-white-50">Total Files</small>
+            <h6 class="mb-0 text-white">{{ folder_stats.total_files|default:"0" }}</h6>
+        </div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card bg-success border-success text-white">
+        <div class="card-body text-center p-2">
+            <small class="text-white-50">Supported</small>
+            <h6 class="mb-0 text-white">{{ folder_stats.supported_files|default:"0" }}</h6>
+        </div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card bg-warning border-warning text-dark">
+        <div class="card-body text-center p-2">
+            <small class="text-dark-50">Unprocessed</small>
+            <h6 class="mb-0 text-dark">{{ folder_stats.unprocessed_files|length|default:"0" }}</h6>
+        </div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card bg-info border-info text-white">
+        <div class="card-body text-center p-2">
+            <small class="text-white-50">Folders</small>
+            <h6 class="mb-0 text-white">{{ folder_stats.folder_structure|length|default:"0" }}</h6>
+        </div>
+    </div>
+</div>

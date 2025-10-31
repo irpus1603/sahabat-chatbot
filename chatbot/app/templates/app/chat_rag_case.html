@@ -1,0 +1,1229 @@
+{% load static %}
+{% load markdown_extras %}
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sahabat AI{% endblock %}</title>
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --sidebar-bg: #f8fafc;
+            --sidebar-border: #e2e8f0;
+            --chat-bg: #ffffff;
+            --user-msg-bg: #2563eb;
+            --bot-msg-bg: #f1f5f9;
+            --input-border: #d1d5db;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
+            min-height: 100vh;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.04);
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 60px !important;
+        }
+
+        .sidebar.collapsed .sidebar-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar.collapsed .sidebar-icons {
+            display: block !important;
+        }
+
+        .sidebar-icons {
+            display: none !important;
+        }
+
+        .sidebar-toggle {
+            right: -12px;
+            z-index: 1000;
+            background-color: var(--sidebar-bg) !important;
+            border-color: var(--sidebar-border) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: var(--secondary-color) !important;
+            color: white !important;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            margin: 0.25rem 1rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .nav-link i {
+            margin-right: 0.75rem;
+            width: 18px;
+        }
+
+        .chat-history {
+            border-top: 1px solid var(--sidebar-border);
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .chat-history-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .history-item {
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .history-item:hover {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+
+        .delete-chat-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            color: var(--danger-color);
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .history-item:hover .delete-chat-btn {
+            opacity: 1;
+        }
+
+        .delete-chat-btn:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        .main-content {
+            background-color: var(--chat-bg);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .chat-header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--sidebar-border);
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+        }
+
+        .message {
+            margin-bottom: 1.5rem;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 1rem 1.25rem;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .user-bubble {
+            background-color: var(--user-msg-bg);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message {
+            background-color: var(--bot-msg-bg);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-area {
+            padding: 2rem;
+            border-top: 1px solid var(--sidebar-border);
+            background-color: white;
+        }
+
+        .input-group {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-control {
+            border: 2px solid var(--input-border);
+            border-radius: 25px;
+            padding: 0.875rem 1.25rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-send {
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-send:hover:not(:disabled) {
+            background-color: #1d4ed8;
+            transform: scale(1.05);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: var(--secondary-color) !important;
+        }
+
+        .btn-send.loading {
+            background-color: var(--secondary-color) !important;
+        }
+
+        .btn-send.loading .send-icon {
+            display: none;
+        }
+
+        .btn-send.loading .htmx-indicator {
+            display: inline-block !important;
+        }
+
+        .form-control:disabled {
+            background-color: #f8f9fa;
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+
+        .welcome-section {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .welcome-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .suggestion-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .suggestion-card {
+            background: white;
+            border: 1px solid var(--sidebar-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--primary-color);
+        }
+
+        .suggestion-icon {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(37, 99, 235, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .suggestion-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .suggestion-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .right-sidebar {
+            background-color: var(--sidebar-bg);
+            border-left: 1px solid var(--sidebar-border);
+            min-height: 100vh;
+            padding: 1.5rem 1rem;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        /* Only apply flex layout when visible */
+        .right-sidebar:not(.d-none) {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-sidebar-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .recent-chat {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            background-color: white;
+            border: 1px solid var(--sidebar-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .recent-chat:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-color: var(--primary-color);
+        }
+
+        .recent-chat.active {
+            border-color: var(--primary-color);
+            background-color: rgba(37, 99, 235, 0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .recent-chat.active .recent-chat-title {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .recent-chat-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .recent-chat-preview {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .recent-chat-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .rag-toggle-btn {
+            background-color: transparent;
+            border: 1px solid var(--sidebar-border);
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .rag-toggle-btn:hover:not(:disabled) {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .rag-toggle-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .rag-mode-on {
+            background-color: var(--success-color) !important;
+            border-color: var(--success-color) !important;
+            color: white !important;
+        }
+
+        .rag-mode-off {
+            background-color: transparent;
+            border-color: var(--sidebar-border);
+            color: var(--text-secondary);
+        }
+
+        .dropdown-menu {
+            background-color: white;
+            border: 1px solid var(--sidebar-border);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .dropdown-item {
+            color: var(--text-primary);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--sidebar-bg);
+        }
+
+        /* Submenu styles */
+        .submenu {
+            margin-left: 1rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--sidebar-border);
+            transition: all 0.3s ease;
+        }
+
+        .submenu-link {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.875rem;
+            margin: 0.1rem 0;
+        }
+
+        .submenu-link:hover {
+            background-color: rgba(37, 99, 235, 0.1) !important;
+            color: var(--primary-color) !important;
+        }
+
+        .nav-link i.ms-auto {
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link.expanded i.ms-auto {
+            transform: rotate(90deg);
+        }
+
+        /* HTMX indicator styles */
+        .htmx-indicator {
+            display: none;
+        }
+        
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        
+        .htmx-request .send-icon {
+            display: none;
+        }
+
+        /* Animations */
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out;
+            background-color: var(--text-muted) !important;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    </style>
+</head>
+<body class="vh-100">
+  
+
+    <div class="container-fluid p-0 h-100">
+        <div class="row g-0 h-100">
+            {% include 'app/sidebar.html' %}
+
+            <!-- Main Chat Area -->
+            <div class="col-lg-8 main-content">
+                <div class="chat-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 fw-semibold text-primary">
+                                {% if current_chat %}
+                                    {{ current_chat.title|default:"Sahabat AI Chatbot - Use Case Management"|truncatechars:50 }}
+                                {% else %}
+                                    Sahabat AI Chatbot
+                                {% endif %}
+                            </h5>
+                            <small class="text-muted" id="ragModeInfo">
+                               
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshPage()" title="Refresh chat">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'old_home' %}">
+                                        <i class="bi bi-house me-2"></i>Home (Old)
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'home' %}">
+                                        <i class="bi bi-plus me-2"></i>New Chat
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    {% if messages %}
+                        {% for message in messages %}
+                            {% include 'app/partials/message.html' %}
+                        {% endfor %}
+                    {% else %}
+                    <!-- Welcome Section -->
+                    <div class="welcome-section">
+                        <h1 class="welcome-title">Ask anything to Sahabat-AI</h1>
+                        <p class="welcome-subtitle">
+                            {% if user.is_authenticated %}
+                                How can I assist you today?
+                            {% else %}
+                                Please sign in to start chatting with the AI assistant.
+                            {% endif %}
+                        </p>
+                        
+                        {% if user.is_authenticated %}
+                        <div class="suggestion-cards">
+                            <form hx-post="{% url 'set_prompt' %}" hx-target="#messageInput" hx-swap="outerHTML" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                {% csrf_token %}
+                                <input type="hidden" name="prompt" value="Explain machine learning concepts in simple terms">
+                                <button type="submit" class="suggestion-card">
+                                    <div class="suggestion-icon">
+                                        <i class="bi bi-lightbulb"></i>
+                                    </div>
+                                    <div class="suggestion-title">Learn Something New</div>
+                                    <div class="suggestion-description">Explain machine learning concepts in simple terms</div>
+                                </button>
+                            </form>
+                            
+                            <form hx-post="{% url 'set_prompt' %}" hx-target="#messageInput" hx-swap="outerHTML" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                {% csrf_token %}
+                                <input type="hidden" name="prompt" value="Write a Python function for data processing">
+                                <button type="submit" class="suggestion-card">
+                                    <div class="suggestion-icon">
+                                        <i class="bi bi-code-slash"></i>
+                                    </div>
+                                    <div class="suggestion-title">Code Assistant</div>
+                                    <div class="suggestion-description">Write a Python function for data processing</div>
+                                </button>
+                            </form>
+                            
+                            <form hx-post="{% url 'set_prompt' %}" hx-target="#messageInput" hx-swap="outerHTML" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                {% csrf_token %}
+                                <input type="hidden" name="prompt" value="Help me plan a project timeline and milestones">
+                                <button type="submit" class="suggestion-card">
+                                    <div class="suggestion-icon">
+                                        <i class="bi bi-calendar-check"></i>
+                                    </div>
+                                    <div class="suggestion-title">Project Planning</div>
+                                    <div class="suggestion-description">Help me plan a project timeline and milestones</div>
+                                </button>
+                            </form>
+                            
+                            <form hx-post="{% url 'set_prompt' %}" hx-target="#messageInput" hx-swap="outerHTML" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                {% csrf_token %}
+                                <input type="hidden" name="prompt" value="Analyze data and provide actionable insights">
+                                <button type="submit" class="suggestion-card">
+                                    <div class="suggestion-icon">
+                                        <i class="bi bi-graph-up"></i>
+                                    </div>
+                                    <div class="suggestion-title">Data Analysis</div>
+                                    <div class="suggestion-description">Analyze data and provide actionable insights</div>
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div class="d-flex gap-3 justify-content-center">
+                            <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Sign In
+                            </a>
+                            <a href="{% url 'register' %}" class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-person-plus me-2"></i>
+                                Register
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Chat Input Area -->
+                {% if user.is_authenticated %}
+                <div class="chat-input-area">
+                    <div class="input-group">
+                        <form method="post"
+                              id="chatForm"
+                              class="d-flex w-100"
+                              onsubmit="sendStreamingMessage(event)">
+                            {% csrf_token %}
+                            <textarea
+                                class="form-control"
+                                name="message"
+                                id="messageInput"
+                                placeholder="{% if request.session.rag_mode_enabled %}Message to Sahabat AI (RAG Mode)...{% else %}Message to Sahabat AI...{% endif %}"
+                                rows="2"
+                                style="resize: vertical; min-height: 50px; max-height: 150px;"
+                                required></textarea>
+                            <button type="submit" class="btn btn-send" id="sendBtn">
+                                <span class="spinner-border spinner-border-sm htmx-indicator" style="width: 16px; height: 16px; display: none;"></span>
+                                <i class="bi bi-send-fill text-white send-icon"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted"> Sahabat-AI can make mistakes. Consider checking important information.</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Sidebar - RAG Features and Chat History -->
+            <div class="col-lg-2">
+                <div class="right-sidebar">
+                    <!-- RAG Features Section -->
+                    <div class="mb-4">
+                        <div class="right-sidebar-title">
+                            <i class="bi bi-robot me-2"></i>
+                            AI Features
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <div id="ragToggleContainer">
+                                {% if user.is_authenticated %}
+                                <button class="btn rag-toggle-btn btn-sm d-flex align-items-center justify-content-center{% if request.session.rag_mode_enabled %} rag-mode-on{% else %} rag-mode-off{% endif %}" 
+                                        hx-post="{% url 'toggle_rag_mode' %}" 
+                                        hx-target="#ragToggleContainer"
+                                        hx-swap="innerHTML"
+                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                    <i class="bi bi-{% if request.session.rag_mode_enabled %}toggle-on{% else %}toggle-off{% endif %} me-2"></i>
+                                    <span>{% if request.session.rag_mode_enabled %}RAG Mode: ON{% else %}RAG Mode: OFF{% endif %}</span>
+                                </button>
+                                {% else %}
+                                <button class="btn rag-toggle-btn btn-sm d-flex align-items-center justify-content-center" disabled>
+                                    <i class="bi bi-lock me-2"></i>
+                                    <span>Login Required</span>
+                                </button>
+                                {% endif %}
+                            </div>
+                            <a href="/rag/search/" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center">
+                                <i class="bi bi-search me-2"></i>
+                                Search Docs
+                            </a>
+                            <a href="/rag/documents/" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center">
+                                <i class="bi bi-files me-2"></i>
+                                Manage Docs
+                            </a>
+                            <button class="btn btn-outline-danger btn-sm d-flex align-items-center justify-content-center" 
+                                    hx-post="{% url 'clear_all_chat_history' %}"
+                                    hx-confirm="Are you sure you want to clear all chat history?"
+                                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                    title="Clear all history">
+                                <i class="bi bi-trash me-2"></i>
+                                Clear All History
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chat History Section -->
+                    <div class="flex-grow-1">
+                        <div class="right-sidebar-title">
+                            <i class="bi bi-clock-history me-2"></i>
+                            Chat History
+                        </div>
+                        
+                        <div style="max-height: 60vh; overflow-y: auto;">
+                            {% for chat in chat_history %}
+                            <div class="recent-chat{% if current_chat and current_chat.id == chat.id %} active{% endif %}" onclick="navigateToChat({{ chat.id }})">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="recent-chat-title flex-grow-1">{{ chat.title|default:"New conversation"|truncatechars:25 }}</div>
+                                    <button class="delete-chat-btn ms-2" 
+                                            hx-post="/chat/{{ chat.id }}/delete/" 
+                                            hx-confirm="Are you sure you want to delete this conversation?"
+                                            hx-target="closest .recent-chat"
+                                            hx-swap="outerHTML"
+                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                            onclick="event.stopPropagation();"
+                                            title="Delete conversation">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="recent-chat-preview">
+                                    {% if chat.messages.first %}
+                                        {{ chat.messages.first.content|truncatechars:60 }}
+                                    {% else %}
+                                        No messages yet...
+                                    {% endif %}
+                                </div>
+                                <div class="recent-chat-time">{{ chat.created_at|timesince }} ago</div>
+                            </div>
+                            {% empty %}
+                            <div class="text-center text-muted mt-4">
+                                <i class="bi bi-chat-dots mb-2" style="font-size: 2rem;"></i>
+                                <p>No chat history yet.</p>
+                                <small>Start a conversation to see your history here.</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <script>
+        // change chat message info placeholder and text-muted based on RAG Mode
+        function updatePlaceholderBasedOnRAGMode() {
+            const messageInput = document.querySelector('#messageInput');
+            const ragToggleBtn = document.querySelector('.rag-toggle-btn');
+            const textMutedElement = document.querySelector('#ragModeInfo');
+
+            if (messageInput && ragToggleBtn && textMutedElement) {
+                // Look for the specific span within the RAG toggle button
+                const ragModeSpan = ragToggleBtn.querySelector('span');
+                if (ragModeSpan && ragModeSpan.textContent.includes('RAG Mode: ON')) {
+                    messageInput.setAttribute('placeholder', 'Message to Sahabat AI (RAG Mode)...');
+                    textMutedElement.innerHTML = 'RAG Mode Active - Enhanced with document knowledge';
+                } else {
+                    messageInput.setAttribute('placeholder', 'Message to Sahabat AI...');
+                    textMutedElement.innerHTML = 'Standard Mode - Direct AI conversation';
+                }
+            }
+        }
+
+        // Listen for HTMX events to update placeholder after RAG toggle
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.target && event.detail.target.id === 'ragToggleContainer') {
+                // Wait a bit for the content to be updated
+                setTimeout(updatePlaceholderBasedOnRAGMode, 100);
+            }
+        });
+
+        // Initial placeholder update on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePlaceholderBasedOnRAGMode();
+        });
+
+        // Sidebar toggle functionality
+        let sidebarCollapsed = false;
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                sidebar.style.minWidth = '60px';
+                sidebar.style.maxWidth = '60px';
+                toggleIcon.className = 'bi bi-chevron-right';
+            } else {
+                sidebar.classList.remove('collapsed');
+                sidebar.style.minWidth = '';
+                sidebar.style.maxWidth = '';
+                toggleIcon.className = 'bi bi-chevron-left';
+            }
+        }
+
+        // Refresh page function
+        function refreshPage() {
+            window.location.reload();
+        }
+
+        // Navigate to chat function
+        function navigateToChat(chatId) {
+            window.location.href = `/${chatId}/`;
+        }
+
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        // Tab switching functionality
+        function switchTab(tab, element) {
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            element.classList.add('active');
+            
+            // Handle tab switching logic here
+            console.log('Switched to:', tab);
+            
+            // You can add specific functionality for each tab here
+            switch(tab) {
+                case 'chat':
+                    // Chat functionality is already implemented
+                    break;
+                case 'config':
+                    // Could redirect to settings page or show config panel
+                    // window.location.href = "{% url 'settings' %}";
+                    break;
+                case 'llm-agent':
+                    // Could show LLM agent configuration
+                    break;
+            }
+        }
+
+        // LLM Agent submenu toggle functionality
+        function toggleLLMAgentSubmenu(element) {
+            const submenu = document.getElementById('llm-agent-submenu');
+            const chevron = document.getElementById('llm-agent-chevron');
+            
+            if (submenu.style.display === 'none' || submenu.style.display === '') {
+                submenu.style.display = 'block';
+                chevron.className = 'bi bi-chevron-down ms-auto';
+                element.classList.add('expanded');
+            } else {
+                submenu.style.display = 'none';
+                chevron.className = 'bi bi-chevron-right ms-auto';
+                element.classList.remove('expanded');
+            }
+        }
+
+        // Auto-scroll chat messages to bottom when new message is added
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Prevent double submissions
+        let isSubmitting = false;
+
+        // Initialize HTMX event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const sendBtn = document.getElementById('sendBtn');
+            const messageInput = document.getElementById('messageInput');
+            
+            // Before HTMX request - disable button and show loading
+            document.body.addEventListener('htmx:beforeRequest', function(event) {
+                if (event.detail.elt.id === 'chatForm') {
+                    if (isSubmitting) {
+                        event.preventDefault();
+                        return false;
+                    }
+                    isSubmitting = true;
+                    
+                    // Disable submit button and input
+                    if (sendBtn) {
+                        sendBtn.disabled = true;
+                        sendBtn.classList.add('loading');
+                    }
+                    if (messageInput) {
+                        messageInput.disabled = true;
+                    }
+                    
+                    // Clear welcome section on first message
+                    const welcomeSection = document.querySelector('.welcome-section');
+                    if (welcomeSection) {
+                        welcomeSection.style.display = 'none';
+                    }
+                    
+                    // Add typing indicator
+                    const typingIndicator = document.createElement('div');
+                    typingIndicator.id = 'typing-indicator';
+                    typingIndicator.className = 'message-container py-3 mb-3';
+                    typingIndicator.innerHTML = `
+                        <div class="row justify-content-center">
+                            <div class="col-12 col-lg-10">
+                                <div class="d-flex align-items-start ps-3">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center me-2 text-white fw-bold" style="width: 32px; height: 32px; font-size: 0.75rem; background-color: var(--primary-color);">
+                                        AI
+                                    </div>
+                                    <div class="px-3 py-2" style="max-width: 70%; word-wrap: break-word;">
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2 text-muted">AI is thinking</span>
+                                            <div class="d-flex">
+                                                <div class="typing-dot bg-secondary rounded-circle me-1" style="width: 6px; height: 6px;"></div>
+                                                <div class="typing-dot bg-secondary rounded-circle me-1" style="width: 6px; height: 6px;"></div>
+                                                <div class="typing-dot bg-secondary rounded-circle" style="width: 6px; height: 6px;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('chatMessages').appendChild(typingIndicator);
+                    setTimeout(scrollToBottom, 100);
+                }
+            });
+            
+            // After HTMX request - re-enable button and hide loading
+            document.body.addEventListener('htmx:afterRequest', function(event) {
+                if (event.detail.elt.id === 'chatForm') {
+                    // Remove typing indicator
+                    const typingIndicator = document.getElementById('typing-indicator');
+                    if (typingIndicator) {
+                        typingIndicator.remove();
+                    }
+                    
+                    setTimeout(scrollToBottom, 100);
+                    isSubmitting = false;
+                    
+                    // Re-enable submit button and input
+                    if (sendBtn) {
+                        sendBtn.disabled = false;
+                        sendBtn.classList.remove('loading');
+                    }
+                    if (messageInput) {
+                        messageInput.disabled = false;
+                        messageInput.focus(); // Focus back to input for better UX
+                    }
+                }
+            });
+            
+            // Reset submission flag and re-enable button on error
+            document.body.addEventListener('htmx:responseError', function(event) {
+                if (event.detail.elt.id === 'chatForm') {
+                    // Remove typing indicator on error
+                    const typingIndicator = document.getElementById('typing-indicator');
+                    if (typingIndicator) {
+                        typingIndicator.remove();
+                    }
+                    
+                    isSubmitting = false;
+                    
+                    // Re-enable submit button and input on error
+                    if (sendBtn) {
+                        sendBtn.disabled = false;
+                        sendBtn.classList.remove('loading');
+                    }
+                    if (messageInput) {
+                        messageInput.disabled = false;
+                        messageInput.focus();
+                    }
+                }
+            });
+        });
+
+        // Handle Enter key in textarea (prevent form submission on Shift+Enter)
+        document.addEventListener('keydown', function(event) {
+            if (event.target.id === 'messageInput') {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+
+                    // Check if form is not currently submitting and input has value
+                    const form = document.getElementById('chatForm');
+                    const sendBtn = document.getElementById('sendBtn');
+
+                    if (form && event.target.value.trim() && !isSubmitting && !sendBtn.disabled) {
+                        // Trigger form submission
+                        sendStreamingMessage(event);
+                    }
+                }
+            }
+        });
+
+        // Streaming message handler
+        function sendStreamingMessage(event) {
+            event.preventDefault();
+
+            if (isSubmitting) return false;
+
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const chatMessages = document.getElementById('chatMessages');
+            const message = messageInput.value.trim();
+
+            if (!message) return false;
+
+            // Set submitting state
+            isSubmitting = true;
+            sendBtn.disabled = true;
+            sendBtn.classList.add('loading');
+            messageInput.disabled = true;
+
+            // Clear welcome section on first message
+            const welcomeSection = document.querySelector('.welcome-section');
+            if (welcomeSection) {
+                welcomeSection.style.display = 'none';
+            }
+
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const chatId = '{{ current_chat.id|default:"" }}';
+
+            // Add user message to chat
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message-container py-3 mb-3';
+            userMessageDiv.innerHTML = `
+                <div class="row justify-content-center">
+                    <div class="col-12 col-lg-10">
+                        <div class="d-flex align-items-start justify-content-end pe-3">
+                            <div class="px-3 py-2 user-bubble text-white rounded-3 shadow-sm" style="max-width: 70%; word-wrap: break-word;">
+                                <div style="white-space: pre-wrap;">${escapeHtml(message)}</div>
+                            </div>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center ms-2 text-white fw-bold" style="width: 32px; height: 32px; font-size: 0.75rem; background-color: #1e40af;">
+                                {{ user.username|slice:":2"|upper }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(userMessageDiv);
+
+            // Add typing indicator
+            const typingIndicator = document.createElement('div');
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.className = 'message-container py-3 mb-3';
+            typingIndicator.innerHTML = `
+                <div class="row justify-content-center">
+                    <div class="col-12 col-lg-10">
+                        <div class="d-flex align-items-start ps-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center me-2 text-white fw-bold" style="width: 32px; height: 32px; font-size: 0.75rem; background-color: var(--primary-color);">
+                                AI
+                            </div>
+                            <div class="px-3 py-2" style="max-width: 70%; word-wrap: break-word;">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2 text-muted">AI is thinking</span>
+                                    <div class="d-flex">
+                                        <div class="typing-dot bg-secondary rounded-circle me-1" style="width: 6px; height: 6px;"></div>
+                                        <div class="typing-dot bg-secondary rounded-circle me-1" style="width: 6px; height: 6px;"></div>
+                                        <div class="typing-dot bg-secondary rounded-circle" style="width: 6px; height: 6px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(typingIndicator);
+            scrollToBottom();
+
+            // Clear input
+            messageInput.value = '';
+
+            // Make streaming request
+            fetch('{% url "chat_stream_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    message: message,
+                    chat_id: chatId
+                })
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                // Remove typing indicator
+                typingIndicator.remove();
+
+                // Create assistant message container
+                const assistantMessageDiv = document.createElement('div');
+                assistantMessageDiv.className = 'message-container py-3 mb-3';
+                assistantMessageDiv.innerHTML = `
+                    <div class="row justify-content-center">
+                        <div class="col-12 col-lg-10">
+                            <div class="d-flex align-items-start ps-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center me-2 text-white fw-bold" style="width: 32px; height: 32px; font-size: 0.75rem; background-color: var(--primary-color);">
+                                    AI
+                                </div>
+                                <div class="px-3 py-2 bot-message rounded-3 shadow-sm" style="max-width: 70%; word-wrap: break-word;">
+                                    <div id="assistant-content" style="white-space: pre-wrap;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(assistantMessageDiv);
+
+                const contentDiv = document.getElementById('assistant-content');
+                let buffer = '';
+
+                function processText() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            // Re-enable input
+                            isSubmitting = false;
+                            sendBtn.disabled = false;
+                            sendBtn.classList.remove('loading');
+                            messageInput.disabled = false;
+                            messageInput.focus();
+                            scrollToBottom();
+                            // Reload to update chat history
+                            setTimeout(() => window.location.reload(), 500);
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.substring(6);
+                                if (data === '[DONE]') {
+                                    return;
+                                }
+                                try {
+                                    const json = JSON.parse(data);
+                                    if (json.type === 'content') {
+                                        contentDiv.textContent += json.content;
+                                        scrollToBottom();
+                                    }
+                                } catch (e) {
+                                    // Ignore parse errors
+                                }
+                            }
+                        }
+
+                        processText();
+                    }).catch(err => {
+                        console.error('Stream error:', err);
+                        contentDiv.textContent += '\n\n[Error: Connection lost]';
+                        isSubmitting = false;
+                        sendBtn.disabled = false;
+                        sendBtn.classList.remove('loading');
+                        messageInput.disabled = false;
+                    });
+                }
+
+                processText();
+            }).catch(err => {
+                console.error('Fetch error:', err);
+                typingIndicator.remove();
+                isSubmitting = false;
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('loading');
+                messageInput.disabled = false;
+            });
+
+            return false;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

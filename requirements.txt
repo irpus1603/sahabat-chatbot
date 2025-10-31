@@ -1,0 +1,19 @@
+Django
+python-dotenv
+requests
+pydantic
+langchain
+langchain-core
+langchain-community
+langgraph
+sentence-transformers
+sqlite-vec
+numpy
+PyPDF2
+python-docx
+openpyxl
+docling
+markdown
+torch==2.4.1
+# torchvision==0.19.1+cu124
+# torchaudio==2.4.1+cu124

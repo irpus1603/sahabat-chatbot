@@ -1,0 +1,51 @@
+<table class="table table-dark table-striped">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Chunks</th>
+            <th>Size</th>
+            <th>Type</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for doc in documents %}
+        <tr>
+            <td>{{ doc.title }}</td>
+            <td>
+                <span class="badge bg-{% if doc.embedding_status == 'completed' %}success{% elif doc.embedding_status == 'processing' %}warning{% elif doc.embedding_status == 'failed' %}danger{% else %}secondary{% endif %}">
+                    {{ doc.embedding_status|title }}
+                </span>
+            </td>
+            <td>{{ doc.chunk_count }}</td>
+            <td>{{ doc.metadata.file_size|filesizeformat }}</td>
+            <td>{{ doc.metadata.file_type|upper }}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    {% if doc.embedding_status == 'failed' or doc.embedding_status == 'pending' %}
+                    <button class="btn btn-outline-primary" 
+                            hx-post="{% url 'reprocess_document' doc.id %}"
+                            hx-target="#documents-table"
+                            hx-confirm="Reprocess this document?">
+                        Reprocess
+                    </button>
+                    {% endif %}
+                    <button class="btn btn-outline-danger" 
+                            hx-post="{% url 'delete_document' doc.id %}"
+                            hx-target="#documents-table"
+                            hx-confirm="Are you sure you want to delete this document? This will also remove all associated embeddings.">
+                        Delete
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center text-muted">
+                No documents uploaded yet
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

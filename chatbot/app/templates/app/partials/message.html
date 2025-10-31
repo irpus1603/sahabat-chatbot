@@ -1,0 +1,35 @@
+{% load markdown_extras %}
+<div class="message-container py-3 mb-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="d-flex align-items-start ps-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center me-2 text-white fw-bold" style="width: 32px; height: 32px; font-size: 0.75rem; background-color: var(--chatgpt-green);">
+                    {% if message.sender == 'user' %}
+                        {% if user.first_name %}{{ user.first_name.0|upper }}{% elif user.username %}{{ user.username.0|upper }}{% else %}U{% endif %}
+                    {% else %}
+                        AI
+                    {% endif %}
+                </div>
+                {% if message.sender == 'user' %}
+                <div class="user-bubble rounded-4 px-3 py-2" style="max-width: 70%; word-wrap: break-word; border-bottom-left-radius: 0.25rem !important;">
+                    <div class="lh-base">
+                        {{ message.content|linebreaks }}
+                    </div>
+                    <div class="small mt-1" style="color: var(--chatgpt-text-muted);">
+                        {{ message.created_at|date:"H:i" }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="px-3 py-2" style="max-width: 70%; word-wrap: break-word;">
+                    <div class="lh-base ai-message-content">
+                        {{ message.content|markdown_to_html|safe }}
+                    </div>
+                    <div class="small text-muted mt-1">
+                        {{ message.created_at|date:"H:i" }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

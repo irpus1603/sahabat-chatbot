@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ChatBot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --chatgpt-dark-bg: #212529;
+            --chatgpt-message-user: #10a37f;
+            --chatgpt-input-bg: #40414f;
+            --chatgpt-border: #4d5069;
+            --chatgpt-text: #ececf1;
+        }
+        
+        body {
+            background-color: var(--chatgpt-dark-bg);
+            color: var(--chatgpt-text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            background-color: var(--chatgpt-input-bg);
+            border: 1px solid var(--chatgpt-border);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .form-control {
+            background-color: var(--chatgpt-dark-bg);
+            border: 1px solid var(--chatgpt-border);
+            color: var(--chatgpt-text);
+        }
+        
+        .form-control:focus {
+            background-color: var(--chatgpt-dark-bg);
+            border-color: var(--chatgpt-message-user);
+            color: var(--chatgpt-text);
+            box-shadow: 0 0 0 0.2rem rgba(16, 163, 127, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: var(--chatgpt-message-user);
+            border-color: var(--chatgpt-message-user);
+        }
+        
+        .btn-primary:hover {
+            background-color: #0d8f68;
+            border-color: #0d8f68;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="text-center mb-4">
+            <h1 class="h3 mb-3">Sign In</h1>
+            <p class="text-muted">Welcome back to ChatBot</p>
+        </div>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-danger" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" id="username" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" id="password" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 mb-3">Sign In</button>
+        </form>
+        
+        <div class="text-center">
+            <p class="text-muted">Don't have an account?</p>
+            <a href="{% url 'register' %}" class="btn btn-outline-light">Create Account</a>
+        </div>
+        
+        <div class="text-center mt-3">
+            <a href="{% url 'home' %}" class="text-decoration-none">← Back to Home</a>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
