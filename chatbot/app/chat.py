@@ -441,7 +441,7 @@ class APIClient:
                 if line:
                     line = line.decode('utf-8')
                     logger.debug(f"Received line: {line[:100]}...")  # Log first 100 chars
-                    
+
                     if line.startswith('data: '):
                         data = line[6:]  # Remove 'data: ' prefix
                         if data.strip() == '[DONE]':
@@ -451,7 +451,13 @@ class APIClient:
                             continue  # Skip empty data lines
                         try:
                             chunk = json.loads(data)
-                            if 'choices' in chunk and len(chunk['choices']) > 0:
+                            # Handle Ollama format (response field)
+                            if 'response' in chunk:
+                                content = chunk.get('response', '')
+                                if content:
+                                    yield content
+                            # Handle OpenAI format (choices array)
+                            elif 'choices' in chunk and len(chunk['choices']) > 0:
                                 delta = chunk['choices'][0].get('delta', {})
                                 content = delta.get('content', '')
                                 if content:
@@ -463,7 +469,17 @@ class APIClient:
                         # Handle non-SSE format - some APIs return plain JSON lines
                         try:
                             chunk = json.loads(line)
-                            if 'choices' in chunk and len(chunk['choices']) > 0:
+                            # Handle Ollama format (response field)
+                            if 'response' in chunk:
+                                content = chunk.get('response', '')
+                                done = chunk.get('done', False)
+                                if content:
+                                    yield content
+                                if done:
+                                    logger.debug("Received done=true from Ollama")
+                                    break
+                            # Handle OpenAI format (choices array)
+                            elif 'choices' in chunk and len(chunk['choices']) > 0:
                                 delta = chunk['choices'][0].get('delta', {})
                                 content = delta.get('content', '')
                                 if content:
