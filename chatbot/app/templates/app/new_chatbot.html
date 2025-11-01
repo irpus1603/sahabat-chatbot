@@ -1221,6 +1221,7 @@
 
             // Function to stream chat response using fetch
             function streamChatResponse(message, chatId) {
+                console.log('🚀 Starting stream for message:', message);
                 const messageId = createAssistantMessage();
                 const contentElement = document.querySelector(`#${messageId} .streaming-content`);
                 const cursorElement = document.querySelector(`#${messageId} .cursor-blink`);
@@ -1234,6 +1235,8 @@
                 formData.append('message', message);
                 formData.append('chat_id', chatId);
 
+                console.log('📤 Sending to:', '{% url "chat_stream_api" %}');
+
                 // Make streaming request
                 fetch('{% url "chat_stream_api" %}', {
                     method: 'POST',
@@ -1243,12 +1246,19 @@
                     body: formData
                 })
                 .then(response => {
+                    console.log('📡 Response status:', response.status);
+                    console.log('📡 Response headers:', {
+                        'content-type': response.headers.get('content-type'),
+                        'transfer-encoding': response.headers.get('transfer-encoding')
+                    });
+
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
 
                     function readStream() {
                         reader.read().then(({done, value}) => {
                             if (done) {
+                                console.log('✅ Stream complete. Total content length:', accumulatedContent.length);
                                 // Final render with markdown
                                 contentElement.innerHTML = renderMarkdown(accumulatedContent);
                                 // Apply syntax highlighting
@@ -1267,6 +1277,7 @@
 
                             // Decode chunk
                             const chunk = decoder.decode(value, {stream: true});
+                            console.log('📦 Chunk received:', chunk.substring(0, 100) + '...');
 
                             // Process SSE data
                             const lines = chunk.split('\n');
@@ -1274,10 +1285,12 @@
                                 if (line.startsWith('data: ')) {
                                     try {
                                         const data = JSON.parse(line.substring(6));
+                                        console.log('📨 SSE data type:', data.type);
 
                                         if (data.type === 'content') {
                                             // Accumulate content
                                             accumulatedContent += data.content;
+                                            console.log('📝 Content added, accumulated length:', accumulatedContent.length);
                                             // Render markdown in real-time
                                             contentElement.innerHTML = renderMarkdown(accumulatedContent);
                                             // Apply syntax highlighting
@@ -1288,11 +1301,13 @@
                                             }
                                             scrollToBottom();
                                         } else if (data.type === 'assistant_end') {
+                                            console.log('🤖 Assistant end, chat_id:', data.chat_id);
                                             // Update chat_id if this was a new chat
                                             if (data.chat_id) {
                                                 document.getElementById('chatIdInput').value = data.chat_id;
                                             }
                                         } else if (data.type === 'stream_end') {
+                                            console.log('🏁 Stream end received');
                                             // Final render with markdown
                                             contentElement.innerHTML = renderMarkdown(accumulatedContent);
                                             // Apply syntax highlighting
@@ -1309,7 +1324,7 @@
                                             return;
                                         }
                                     } catch (e) {
-                                        console.error('Error parsing SSE data:', e);
+                                        console.error('❌ Error parsing SSE data:', e, 'Line:', line);
                                     }
                                 }
                             }
@@ -1322,7 +1337,7 @@
                     readStream();
                 })
                 .catch(error => {
-                    console.error('Streaming error:', error);
+                    console.error('❌ Streaming error:', error);
                     contentElement.textContent = 'Sorry, an error occurred while processing your request.';
                     if (cursorElement) {
                         cursorElement.remove();
